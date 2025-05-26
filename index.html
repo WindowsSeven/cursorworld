@@ -1,0 +1,578 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>CursorWorld</title>
+    <style>
+        #cursor-container {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+        }
+
+        #game-border {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 600px;
+            height: 400px;
+            margin-top: -200px; /* Half of height */
+            margin-left: -300px; /* Half of width */
+            border: 2px solid black;
+            box-sizing: border-box; /* Include border in width/height */
+            overflow: hidden; /* Ensure no overflow */
+        }
+
+        .cursor {
+            position: absolute;
+            width: 19px;
+            height: 19px;
+            pointer-events: none;
+            z-index: 1000;
+            transform-origin: top left; /* Scale from the top-left corner */
+        }
+
+        .username {
+            position: absolute;
+            top: -20px; /* Position above the cursor */
+            left: 50%;
+            transform: translateX(-50%);
+            color: black; /* Ensure the text is visible */
+            font-size: 14px; /* Increase font size */
+            opacity: 1; /* Ensure the text is not transparent */
+            pointer-events: none;
+            white-space: nowrap;
+            background-color: rgba(255, 255, 255, 0.8); /* Add a background to make text more visible */
+            padding: 2px 4px; /* Add padding to make text more visible */
+            border-radius: 4px; /* Add border radius for a better look */
+        }
+
+        /* Styles for color picker UI */
+        #color-picker-container {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            background-color: rgba(255, 255, 255, 0.8);
+            padding: 10px;
+            border: 1px solid #ccc;
+            display: block; /* Visible by default */
+            z-index: 1001; /* Ensure it's in front of other elements */
+        }
+
+        .slider-container {
+            margin-bottom: 5px;
+        }
+
+        /* Color preview box */
+        #color-preview {
+            width: 50px;
+            height: 50px;
+            border: 1px solid #000;
+            margin-top: 10px;
+        }
+
+        /* Scaling options */
+        #scaling-options {
+            position: absolute;
+            top: 10px;
+            right: 10px; /* Position in the top right */
+            z-index: 1002;
+        }
+
+        #scale-slider-container {
+            display: none;
+        }
+
+        /* Cursor menu */
+        #cursor-menu-container {
+            position: absolute;
+            bottom: 10px;
+            left: 10px;
+            background-color: rgba(255, 255, 255, 0.8);
+            padding: 10px;
+            border: 1px solid #ccc;
+            display: block; /* Visible by default */
+            z-index: 1001; /* Ensure it's in front of other elements */
+        }
+
+        .cursor-preview {
+            display: flex;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+
+        .cursor-preview canvas {
+            margin-right: 10px;
+        }
+
+        .cursor-preview button {
+            margin-left: 10px;
+        }
+
+        /* Username input */
+        #username-container {
+            position: absolute;
+            bottom: 10px;
+            right: 10px;
+            background-color: rgba(255, 255, 255, 0.8);
+            padding: 10px;
+            border: 1px solid #ccc;
+            display: block; /* Visible by default */
+            z-index: 1001; /* Ensure it's in front of other elements */
+        }
+
+        #username-input {
+            margin-right: 10px;
+        }
+
+        /* Chat container */
+        #chat-container {
+            position: absolute;
+            top: 50%;
+            right: 10px;
+            transform: translateY(-50%);
+            width: 300px;
+            height: 400px;
+            background-color: rgba(255, 255, 255, 0.8);
+            padding: 10px;
+            border: 1px solid #ccc;
+            display: block; /* Visible by default */
+            z-index: 1001; /* Ensure it's in front of other elements */
+            overflow-y: auto;
+        }
+
+        #chat-messages {
+            height: calc(100% - 60px); /* Adjust height to fit input and button */
+            overflow-y: auto;
+        }
+
+        #chat-input {
+            width: calc(100% - 20px);
+            padding: 5px;
+            margin-top: 10px;
+        }
+
+        #send-button {
+            width: 100%;
+            padding: 5px;
+            margin-top: 5px;
+        }
+    </style>
+</head>
+<body>
+    <div id="cursor-container">
+        <div id="game-border">
+            <!-- Cursors will be added here dynamically -->
+        </div>
+    </div>
+
+    <!-- Color Picker UI -->
+    <div id="color-picker-container">
+        <div class="slider-container">
+            <label for="red-slider">Red:</label>
+            <input type="range" id="red-slider" min="0" max="255" value="0">
+            <span id="red-value">0</span>
+        </div>
+        <div class="slider-container">
+            <label for="green-slider">Green:</label>
+            <input type="range" id="green-slider" min="0" max="255" value="0">
+            <span id="green-value">0</span>
+        </div>
+        <div class="slider-container">
+            <label for="blue-slider">Blue:</label>
+            <input type="range" id="blue-slider" min="0" max="255" value="0">
+            <span id="blue-value">0</span>
+        </div>
+        <div id="color-preview"></div>
+        <button id="set-color-button">Set Color</button>
+    </div>
+
+    <!-- Cursor Menu -->
+    <div id="cursor-menu-container">
+        <div id="cursor-previews"></div>
+    </div>
+
+    <!-- Scaling Options -->
+    <div id="scaling-options">
+        <label for="custom-scale-checkbox">Custom Scale:</label>
+        <input type="checkbox" id="custom-scale-checkbox">
+        <div id="scale-slider-container">
+            <label for="scale-slider">Scale:</label>
+            <input type="range" id="scale-slider" min="0.5" max="2" step="0.1" value="1">
+            <span id="scale-value">1</span>
+        </div>
+    </div>
+
+    <!-- Username Input -->
+    <div id="username-container">
+        <label for="username-input">Username:</label>
+        <input type="text" id="username-input" placeholder="Enter your username">
+        <button id="set-username-button">Set Username</button>
+    </div>
+
+    <!-- Chat Container -->
+    <div id="chat-container">
+        <div id="chat-messages"></div>
+        <input type="text" id="chat-input" placeholder="Type your message here">
+        <button id="send-button">Send</button>
+    </div>
+
+    <script>
+        const cursorContainer = document.getElementById('game-border');
+        const socket = new WebSocket('ws://localhost:8765');
+        const clientId = generateId();
+        let myCursor = null;
+        let myColor = '#' + Math.floor(Math.random() * 16777215).toString(16); // Default color
+        let currentCursor = 'cursor_0001.png'; // Default cursor
+        let myUsername = ''; // Default username
+        const gameBorder = document.getElementById('game-border');
+        const gameBorderRect = gameBorder.getBoundingClientRect();
+        let currentPlayers = {};
+
+        // Color Picker UI Elements
+        const colorPickerContainer = document.getElementById('color-picker-container');
+        const redSlider = document.getElementById('red-slider');
+        const greenSlider = document.getElementById('green-slider');
+        const blueSlider = document.getElementById('blue-slider');
+        const redValue = document.getElementById('red-value');
+        const greenValue = document.getElementById('green-value');
+        const blueValue = document.getElementById('blue-value');
+        const setColorButton = document.getElementById('set-color-button');
+        const colorPreview = document.getElementById('color-preview');
+
+        // Cursor Menu Elements
+        const cursorMenuContainer = document.getElementById('cursor-menu-container');
+        const cursorPreviewsContainer = document.getElementById('cursor-previews');
+
+        // Scaling Options Elements
+        const customScaleCheckbox = document.getElementById('custom-scale-checkbox');
+        const scaleSliderContainer = document.getElementById('scale-slider-container');
+        const scaleSlider = document.getElementById('scale-slider');
+        const scaleValue = document.getElementById('scale-value');
+
+        // Username Input Elements
+        const usernameInput = document.getElementById('username-input');
+        const setUsernameButton = document.getElementById('set-username-button');
+
+        // Chat Elements
+        const chatContainer = document.getElementById('chat-container');
+        const chatMessages = document.getElementById('chat-messages');
+        const chatInput = document.getElementById('chat-input');
+        const sendButton = document.getElementById('send-button');
+
+        function generateId() {
+            return Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
+        }
+
+        async function getRandomUsername() {
+            const response = await fetch('user.txt');
+            const text = await response.text();
+            const usernames = text.split('/').filter(username => username.trim() !== '');
+            return usernames[Math.floor(Math.random() * usernames.length)];
+        }
+
+        socket.addEventListener('open', async (event) => {
+            console.log('Connected to WebSocket server');
+            myUsername = await getRandomUsername();
+            socket.send(JSON.stringify({ type: 'newPlayer', id: clientId, color: myColor, username: myUsername })); // Send default color and username
+            createMyCursor(myColor, myUsername); // Create initial cursor
+        });
+
+        socket.addEventListener('message', (event) => {
+            const data = JSON.parse(event.data);
+            console.log("Received message:", data);
+
+            if (data.type === 'updateCursor') {
+                console.log(`Update cursor: id=${data.id}, x=${data.x}, y=${data.y}, scale=${data.scale}`);
+                updateCursor(data.id, data.x, data.y, data.scale);
+            } else if (data.type === 'playerList') {
+                console.log("Player list:", data.players);
+                currentPlayers = data.players;
+                for (const playerId in currentPlayers) {
+                    if (playerId !== clientId) {
+                        if (!document.getElementById(`cursor-${playerId}`)) {
+                            createCursor(playerId, currentPlayers[playerId].x, currentPlayers[playerId].y, currentPlayers[playerId].color, currentPlayers[playerId].scale, currentPlayers[playerId].username);
+                        }
+                    }
+                }
+            } else if (data.type === 'newColor') {
+                const playerId = data.id;
+                const newColor = data.color;
+                console.log(`Received new color for player ${playerId}: ${newColor}`);
+
+                // Update the cursor color if it exists
+                const cursor = document.getElementById(`cursor-${playerId}`);
+                if (cursor) {
+                    drawCursor(cursor.querySelector('canvas'), newColor);
+                } else {
+                    console.warn(`Cursor with id ${playerId} not found.`);
+                }
+            } else if (data.type === 'newPlayer') {
+                console.log(`New player: id=${data.id}, color=${data.color}, scale=${data.scale}, username=${data.username}`);
+                if (!document.getElementById(`cursor-${data.id}`)) {
+                    createCursor(data.id, data.x, data.y, data.color, data.scale, data.username); // Create the other players
+                }
+                currentPlayers[data.id] = { x: data.x, y: data.y, color: data.color, scale: data.scale, username: data.username };  // store data
+            } else if (data.type === 'newUsername') {
+                const playerId = data.id;
+                const newUsername = data.username;
+                console.log(`Received new username for player ${playerId}: ${newUsername}`);
+
+                // Update the username if the cursor exists
+                const cursor = document.getElementById(`cursor-${playerId}`);
+                if (cursor) {
+                    cursor.querySelector('.username').textContent = newUsername;
+                } else {
+                    console.warn(`Cursor with id ${playerId} not found.`);
+                }
+            } else if (data.type === 'chatMessage') {
+                const username = data.username;
+                const message = data.message;
+                console.log(`Received chat message from ${username}: ${message}`);
+
+                // Display the chat message
+                const messageElement = document.createElement('div');
+                messageElement.textContent = `${username}: ${message}`;
+                chatMessages.appendChild(messageElement);
+                chatMessages.scrollTop = chatMessages.scrollHeight; // Scroll to the bottom
+            } else if (data.type === 'playerDisconnected') {
+                const playerId = data.id;
+                console.log(`Player disconnected: id=${playerId}`);
+                removeCursor(playerId);
+            }
+        });
+
+        function createCursor(id, x, y, color, scale = 1, username = '') {
+            if (document.getElementById(`cursor-${id}`)) return;
+
+            const cursor = document.createElement('div');
+            cursor.id = `cursor-${id}`;
+            cursor.classList.add('cursor');
+            cursorContainer.appendChild(cursor);
+
+            const canvas = document.createElement('canvas');
+            canvas.width = 19;
+            canvas.height = 19;
+            cursor.appendChild(canvas);
+
+            const usernameElement = document.createElement('div');
+            usernameElement.classList.add('username');
+            usernameElement.textContent = username;
+            cursor.appendChild(usernameElement);
+
+            cursor.style.left = `${x}px`;
+            cursor.style.top = `${y}px`;
+            cursor.style.transform = `scale(${scale})`;
+
+            drawCursor(canvas, color);
+
+            console.log(`Created cursor ${id} at x=${x}, y=${y}, color=${color}, scale=${scale}, username=${username}`);
+        }
+
+        function updateCursor(id, x, y, scale = 1) {
+            const cursor = document.getElementById(`cursor-${id}`);
+            if (cursor) {
+                cursor.style.left = `${x}px`;
+                cursor.style.top = `${y}px`;
+                cursor.style.transform = `scale(${scale})`;
+                console.log(`Updating cursor ${id} at x=${x}, y=${y}, scale=${scale}`);
+            }
+        }
+
+        function removeCursor(id) {
+            const cursor = document.getElementById(`cursor-${id}`);
+            if (cursor) {
+                cursor.remove();
+            }
+        }
+
+        function createMyCursor(color, username = '') {
+            myCursor = document.createElement('div');
+            myCursor.id = `cursor-${clientId}`;
+            myCursor.classList.add('cursor');
+            cursorContainer.appendChild(myCursor);
+
+            const canvas = document.createElement('canvas');
+            canvas.width = 19;
+            canvas.height = 19;
+            myCursor.appendChild(canvas);
+
+            const usernameElement = document.createElement('div');
+            usernameElement.classList.add('username');
+            usernameElement.textContent = username;
+            myCursor.appendChild(usernameElement);
+
+            myCursor.style.left = "0px";
+            myCursor.style.top = "0px";
+
+            drawCursor(canvas, color);
+
+            console.log(`Created my cursor with id: ${clientId}, color: ${color}, username: ${username}`);
+        }
+
+        function drawCursor(canvas, color) {
+            const ctx = canvas.getContext('2d');
+            const img = new Image();
+            img.src = currentCursor; // Use the selected cursor
+            img.onload = () => {
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+                ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+
+                const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+                const data = imageData.data;
+
+                const [r, g, b] = color.match(/\d+/g).map(Number);
+
+                for (let i = 0; i < data.length; i += 4) {
+                    if (data[i] === 255 && data[i + 1] === 0 && data[i + 2] === 0) {
+                        data[i] = r; // Red
+                        data[i + 1] = g; // Green
+                        data[i + 2] = b; // Blue
+                    }
+                }
+
+                ctx.putImageData(imageData, 0, 0);
+            };
+        }
+
+        document.addEventListener('mousemove', (event) => {
+            // Get mouse position *relative to the game border*
+            let x = event.clientX - gameBorderRect.left;
+            let y = event.clientY - gameBorderRect.top;
+
+            // Check if the mouse is within the game border
+            if (x >= 0 && x <= 600 && y >= 0 && y <= 400) {
+                // Clamp the coordinates to stay within the border
+                x = Math.max(0, Math.min(x, 600 - 20)); // Subtract cursor width from max
+                y = Math.max(0, Math.min(y, 400 - 20)); // Subtract cursor height from max
+
+                if (myCursor) {
+                    myCursor.style.left = `${x}px`;
+                    myCursor.style.top = `${y}px`;
+                }
+
+                const scale = customScaleCheckbox.checked ? scaleSlider.value : 1;
+                socket.send(JSON.stringify({ type: 'cursorMove', id: clientId, x: x, y: y, scale: scale }));
+            }
+        });
+
+        setColorButton.addEventListener('click', () => {
+            console.log('Set color button clicked');
+            const red = redSlider.value;
+            const green = greenSlider.value;
+            const blue = blueSlider.value;
+            const newColor = `rgb(${red}, ${green}, ${blue})`; // Use rgb
+            myColor = newColor;
+
+            // Update my cursor color immediately
+            drawCursor(myCursor.querySelector('canvas'), newColor);
+
+            // Send the new color to the server, so the server can use this and
+            // send it out to all of the other connected cursors.
+            socket.send(JSON.stringify({ type: 'newColor', id: clientId, color: newColor }));
+        });
+
+        redSlider.addEventListener('input', () => {
+            redValue.textContent = redSlider.value;
+            updateColorPreview();
+        });
+        greenSlider.addEventListener('input', () => {
+            greenValue.textContent = greenSlider.value;
+            updateColorPreview();
+        });
+        blueSlider.addEventListener('input', () => {
+            blueValue.textContent = blueSlider.value;
+            updateColorPreview();
+        });
+
+        function updateColorPreview() {
+            const red = redSlider.value;
+            const green = greenSlider.value;
+            const blue = blueSlider.value;
+            const color = `rgb(${red}, ${green}, ${blue})`;
+            colorPreview.style.backgroundColor = color;
+        }
+
+        function createCursorPreview(cursorName) {
+            const previewContainer = document.createElement('div');
+            previewContainer.classList.add('cursor-preview');
+
+            const canvas = document.createElement('canvas');
+            canvas.width = 19;
+            canvas.height = 19;
+            previewContainer.appendChild(canvas);
+
+            const button = document.createElement('button');
+            button.textContent = 'Select';
+            button.addEventListener('click', () => {
+                currentCursor = cursorName;
+                drawCursor(myCursor.querySelector('canvas'), myColor);
+            });
+            previewContainer.appendChild(button);
+
+            cursorPreviewsContainer.appendChild(previewContainer);
+
+            const ctx = canvas.getContext('2d');
+            const img = new Image();
+            img.src = cursorName;
+            img.onload = () => {
+                ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+            };
+        }
+
+        for (let i = 1; i <= 9; i++) {
+            const cursorName = `cursor_000${i}.png`;
+            createCursorPreview(cursorName);
+        }
+
+        // Scaling Options Event Listeners
+        customScaleCheckbox.addEventListener('change', () => {
+            if (customScaleCheckbox.checked) {
+                scaleSliderContainer.style.display = 'block';
+            } else {
+                scaleSliderContainer.style.display = 'none';
+            }
+        });
+
+        scaleSlider.addEventListener('input', () => {
+            scaleValue.textContent = scaleSlider.value;
+            updateCursorScale();
+        });
+
+        function updateCursorScale() {
+            const scale = scaleSlider.value;
+            if (myCursor) {
+                myCursor.style.transform = `scale(${scale})`;
+            }
+        }
+
+        // Username Input Event Listeners
+        setUsernameButton.addEventListener('click', () => {
+            const newUsername = usernameInput.value.trim();
+            if (newUsername) {
+                myUsername = newUsername;
+                myCursor.querySelector('.username').textContent = myUsername;
+                socket.send(JSON.stringify({ type: 'newUsername', id: clientId, username: myUsername }));
+            }
+        });
+
+        // Chat Event Listeners
+        sendButton.addEventListener('click', () => {
+            const message = chatInput.value.trim();
+            if (message) {
+                socket.send(JSON.stringify({ type: 'chatMessage', id: clientId, message: message }));
+                chatInput.value = ''; // Clear the input field
+            }
+        });
+
+        // Ensure the elements exist before adding event listeners
+        if (setColorButton && redSlider && greenSlider && blueSlider && customScaleCheckbox && scaleSlider && setUsernameButton && sendButton) {
+            console.log('All elements exist');
+        } else {
+            console.error('One or more elements do not exist');
+        }
+    </script>
+</body>
+</html>

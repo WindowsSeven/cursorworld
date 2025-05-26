@@ -235,12 +235,11 @@ def clean_up_unused_images():
             except Exception as e:
                 print(f"Error deleting unused image: {e}")
 
-app = asyncio.run(main()) # necessary to run the server for gunicorn
-
 async def main():
-    async with websockets.serve(handle_client, "", int(os.environ.get("PORT", 8765))):
-        print("WebSocket server started")
-        await asyncio.Future()
+    async with websockets.serve(handle_client, "0.0.0.0", 8765):  # Corrected: No more path argument.
+        print("WebSocket server started at ws://0.0.0.0:8765")
+        await asyncio.Future()  # Run forever
 
+# Start the server
 if __name__ == "__main__":
     asyncio.run(main())

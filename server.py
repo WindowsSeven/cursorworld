@@ -1,7 +1,6 @@
 import asyncio
 import websockets
 import json
-import random
 import os
 import base64
 
@@ -45,7 +44,7 @@ if not os.path.exists(IMAGE_DIR):
 for filename in os.listdir(IMAGE_DIR):
     available_images.add(filename)
 
-async def handle_client(websocket):  # Corrected: Removed the 'path' argument
+async def handle_client(websocket, path):
     client_id = None
     try:
         async for message in websocket:
